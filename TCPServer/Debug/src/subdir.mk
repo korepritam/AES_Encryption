@@ -4,20 +4,20 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../src/tcp_server.cpp 
+../src/TCPServer.cpp 
 
 CPP_DEPS += \
-./src/tcp_server.d 
+./src/TCPServer.d 
 
 OBJS += \
-./src/tcp_server.o 
+./src/TCPServer.o 
 
 
 # Each subdirectory must supply rules for building sources it contributes
 src/%.o: ../src/%.cpp src/subdir.mk
 	@echo 'Building file: $<'
 	@echo 'Invoking: Cross G++ Compiler'
-	g++ -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
+	g++ -I"/Users/pritam/cpp-workspace/AES_Encryption/TCPServer/include" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
@@ -25,7 +25,7 @@ src/%.o: ../src/%.cpp src/subdir.mk
 clean: clean-src
 
 clean-src:
-	-$(RM) ./src/tcp_server.d ./src/tcp_server.o
+	-$(RM) ./src/TCPServer.d ./src/TCPServer.o
 
 .PHONY: clean-src
 
