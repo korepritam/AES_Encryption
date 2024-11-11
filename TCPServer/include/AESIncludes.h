@@ -14,6 +14,6 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
-#define AES_16_BYTES 16
+#define AES_32_BYTES 32 // 256-bit key length
 
 #endif /* AESINCLUDES_H_ */

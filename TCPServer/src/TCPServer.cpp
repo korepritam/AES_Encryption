@@ -6,25 +6,22 @@
 // Description : Hello World in C++, Ansi-style
 //============================================================================
 
-#include "StandardIncludes.h"
-#include "AESWrapper.h"
-
-using namespace std;
+#include "AES_GCM_256_ENCRYPTION.h"
 
 void handleClient(int clientSocket)
 {
-    unsigned char buffer[1024];
+    unsigned char buffer[MSG_LEN];
 
-    int iv_len = read(clientSocket, buffer, AES_16_BYTES);
-    if (iv_len != AES_16_BYTES)
+    int iv_len = read(clientSocket, buffer, EVP_MAX_IV_LENGTH);
+    if (iv_len != EVP_MAX_IV_LENGTH)
     {
         cerr << "Error reading IV from client." << endl;
         close(clientSocket);
         return;
     }
 
-    unsigned char iv[AES_16_BYTES];
-    memcpy(iv, buffer, AES_16_BYTES);
+    unsigned char iv[EVP_MAX_IV_LENGTH];
+    memcpy(iv, buffer, EVP_MAX_IV_LENGTH);
 
     int ciphertext_len = read(clientSocket, buffer, sizeof(buffer));
     if (ciphertext_len <= 0)
@@ -35,9 +32,9 @@ void handleClient(int clientSocket)
     }
 
     unsigned char decrypted[1024];
-    AESWrapper &aes = AESWrapper::getInstance();
+    AES_GCM_256_ENCRYPTION &aes = AES_GCM_256_ENCRYPTION::getInstance();
 
-    int decrypted_len = aes.decrypt(buffer, ciphertext_len, iv, decrypted);
+    int decrypted_len = aes.decryptMessage(buffer, ciphertext_len, iv, decrypted);
     if (decrypted_len == -1)
     {
         cerr << "Decryption failed." << endl;
@@ -56,25 +53,32 @@ void handleClient(int clientSocket)
 
 int main(int argc, char **argv)
 {
-    if (argc != 4)
+    if (argc != 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <server_ip> <server_port> <AES_key>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <server_ip> <server_port> <cryptography_key> <IV>" << std::endl;
         return EXIT_FAILURE;
     }
 
     const char* tcpServerIP = argv[1];
     int tcpServerPort = atoi(argv[2]);
     const char *keyStr = argv[3];
+    const char *ivStr = argv[4];
 
-    if (strlen(keyStr) != AES_16_BYTES)
+    if (strlen(keyStr) != AES_32_BYTES)
     {
-        cerr << "Error: AES key must be 16 characters long (128-bit key). sent length (" << strlen(keyStr) << ")" << endl;
+        cerr << "Error: AES key must be 32 characters long (128-bit key). sent length (" << strlen(keyStr) << ")" << endl;
         return EXIT_FAILURE;
     }
+    char key[AES_32_BYTES]; memcpy(key, keyStr, AES_32_BYTES);
 
-    char key[16]; memcpy(key, keyStr, AES_16_BYTES);
+    if(strlen(ivStr) != EVP_MAX_IV_LENGTH)
+    {
+		cerr << "Error: IV must be 16 characters long . sent length (" << strlen(ivStr) << ")" << endl;
+		return EXIT_FAILURE;
+    }
+    char iv[EVP_MAX_IV_LENGTH]; memcpy(iv, ivStr, EVP_MAX_IV_LENGTH);
 
-    AESWrapper::getInstance(key);
+    AES_GCM_256_ENCRYPTION::getInstance(key,iv);
 
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1)

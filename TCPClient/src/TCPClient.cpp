@@ -6,10 +6,10 @@
 // Description : Hello World in C++, Ansi-style
 //============================================================================
 
-#include "StandardIncludes.h"
-#include "AESWrapper.h"
+#include "AES_GCM_256_ENCRYPTION.h"
 
-void handleServer(int clientSocket) {
+void handleServer(int clientSocket)
+{
     const char* clientMsg = "Hello from Client";
     write(clientSocket, clientMsg, strlen(clientMsg));
 
@@ -23,20 +23,11 @@ void handleServer(int clientSocket) {
     close(clientSocket);
 }
 
-void encryptAndSendMessage(int serverSocket, const char *message, const char *key) {
-
-	AESWrapper& aes = AESWrapper::getInstance(key);
-
-    unsigned char iv[AES_16_BYTES]; aes.generate_random_iv(iv);
-
-    std::cout << "Client IV: ";
-    for (size_t i = 0; i < AES_16_BYTES; ++i) {
-        printf("%02x", iv[i]);
-    }
-    cout << endl;
-
+void encryptAndSendMessage(int serverSocket, const char *message, const char *key)
+{
+	AES_GCM_256_ENCRYPTION &aes = AES_GCM_256_ENCRYPTION::getInstance();
     unsigned char ciphertext[MSG_LEN];
-    int ciphertext_len = aes.encrypt(reinterpret_cast<const unsigned char *>(message), strlen(message), iv, ciphertext);
+    int ciphertext_len = aes.encryptMessage(reinterpret_cast<const unsigned char *>(message), strlen(message), ciphertext);
 
     if (ciphertext_len == -1)
     {
@@ -44,29 +35,38 @@ void encryptAndSendMessage(int serverSocket, const char *message, const char *ke
         return;
     }
 
-    write(serverSocket, iv, AES_16_BYTES);  // Send the IV
-    write(serverSocket, ciphertext, ciphertext_len);  // Send the ciphertext
+//    write(serverSocket, iv, EVP_MAX_IV_LENGTH);  //Send the IV
+    write(serverSocket, ciphertext, ciphertext_len);  //Send the ciphertext
 }
 
 int main(int argc, char **argv)
 {
-    if (argc != 4)
+    if (argc != 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <server_ip> <server_port> <aes_key>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <server_ip> <server_port> <cryptographic_key> <IV>" << std::endl;
         return EXIT_FAILURE;
     }
 
     const char *serverIp = argv[1];
     int serverPort = atoi(argv[2]);
     const char *keyStr = argv[3];
+    const char *ivStr = argv[4];
 
-    if (strlen(keyStr) != AES_16_BYTES)
+    if (strlen(keyStr) != AES_32_BYTES)
+    {
+        cerr << "Error: AES key must be 32 characters long. sent length (" << strlen(keyStr) << ")" << endl;
+        return EXIT_FAILURE;
+    }
+    char key[AES_32_BYTES]; memcpy(key, keyStr, AES_32_BYTES);
+
+    if (strlen(ivStr) != EVP_MAX_IV_LENGTH)
     {
         cerr << "Error: AES key must be 16 characters long. sent length (" << strlen(keyStr) << ")" << endl;
         return EXIT_FAILURE;
     }
+    char iv[EVP_MAX_IV_LENGTH]; memcpy(key, keyStr, EVP_MAX_IV_LENGTH);
 
-    char key[16]; memcpy(key, keyStr, 16);
+    AES_GCM_256_ENCRYPTION::getInstance(key,iv);
 
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1)
