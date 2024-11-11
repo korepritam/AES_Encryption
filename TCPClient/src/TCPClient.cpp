@@ -8,22 +8,28 @@
 
 #include "AES_GCM_256_ENCRYPTION.h"
 
-void handleServer(int clientSocket)
+int getAESValuesFromServer(int serverSocket)
 {
-    const char* clientMsg = "Hello from Client";
-    write(clientSocket, clientMsg, strlen(clientMsg));
+    unsigned char key_iv[AES_32_BYTES + EVP_MAX_IV_LENGTH];
+    int key_iv_len = read(serverSocket, key_iv, AES_32_BYTES + EVP_MAX_IV_LENGTH);
+    if (key_iv_len > 0)
+    {
+        char key[AES_32_BYTES]; char iv[EVP_MAX_IV_LENGTH];
+        memcpy(key, key_iv, AES_32_BYTES);
+        memcpy(iv, key_iv+AES_32_BYTES, EVP_MAX_IV_LENGTH);
 
-    unsigned char buffer[1024];
-    int len = read(clientSocket, buffer, sizeof(buffer));
-    if (len > 0) {
-        buffer[len] = '\0';
-        std::cout << "Server response: " << buffer << std::endl;
+        AES_GCM_256_ENCRYPTION::getInstance(key,iv);
+
+        return EXIT_SUCCESS;
     }
-
-    close(clientSocket);
+    else
+    {
+        cerr << "Error receiving (Cryptographic Key/iv) response from server." << endl;
+        return EXIT_FAILURE;
+    }
 }
 
-void encryptAndSendMessage(int serverSocket, const char *message, const char *key)
+void encryptAndSendMessage(int serverSocket, const char *message)
 {
 	AES_GCM_256_ENCRYPTION &aes = AES_GCM_256_ENCRYPTION::getInstance();
     unsigned char ciphertext[MSG_LEN];
@@ -35,38 +41,20 @@ void encryptAndSendMessage(int serverSocket, const char *message, const char *ke
         return;
     }
 
-//    write(serverSocket, iv, EVP_MAX_IV_LENGTH);  //Send the IV
     write(serverSocket, ciphertext, ciphertext_len);  //Send the ciphertext
+
 }
 
 int main(int argc, char **argv)
 {
-    if (argc != 5)
+    if (argc != 3)
     {
-        std::cerr << "Usage: " << argv[0] << " <server_ip> <server_port> <cryptographic_key> <IV>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <server_ip> <server_port>" << std::endl;
         return EXIT_FAILURE;
     }
 
     const char *serverIp = argv[1];
     int serverPort = atoi(argv[2]);
-    const char *keyStr = argv[3];
-    const char *ivStr = argv[4];
-
-    if (strlen(keyStr) != AES_32_BYTES)
-    {
-        cerr << "Error: AES key must be 32 characters long. sent length (" << strlen(keyStr) << ")" << endl;
-        return EXIT_FAILURE;
-    }
-    char key[AES_32_BYTES]; memcpy(key, keyStr, AES_32_BYTES);
-
-    if (strlen(ivStr) != EVP_MAX_IV_LENGTH)
-    {
-        cerr << "Error: AES key must be 16 characters long. sent length (" << strlen(keyStr) << ")" << endl;
-        return EXIT_FAILURE;
-    }
-    char iv[EVP_MAX_IV_LENGTH]; memcpy(key, keyStr, EVP_MAX_IV_LENGTH);
-
-    AES_GCM_256_ENCRYPTION::getInstance(key,iv);
 
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1)
@@ -89,23 +77,29 @@ int main(int argc, char **argv)
 
     cout << "Connected to server at " << serverIp << ":" << serverPort << endl;
 
+    if(getAESValuesFromServer(serverSocket) == EXIT_FAILURE) {
+    	perror("Unable to get Cryptographic Key and IV");
+    	close(serverSocket);
+    	return EXIT_FAILURE;
+    }
+
     const char *message = "Hello, this is an encrypted message!";
     cout << "Client message: " << message << endl;
+    encryptAndSendMessage(serverSocket, message);
 
-    encryptAndSendMessage(serverSocket, message, key);
-
-    unsigned char response[1024];
-    int response_len = read(serverSocket, response, sizeof(response));
+    unsigned char server_response[MSG_LEN];
+    int response_len = read(serverSocket, server_response, sizeof(server_response));
     if (response_len > 0)
-    {
-        response[response_len] = '\0';  // Null-terminate the response
-        cout << "Server response: " << response << endl;
-    }
-    else
-    {
-        cerr << "Error receiving response from server." << endl;
-    }
+	{
+    	server_response[response_len] = '\0';  // Null-terminate the response
+		cout << "Server response: " << server_response << endl;
+	}
+	else
+	{
+		cerr << "Error receiving response from server." << endl;
+	}
 
     close(serverSocket);
+
     return EXIT_SUCCESS;
 }

@@ -45,12 +45,12 @@ AES_GCM_256_ENCRYPTION::~AES_GCM_256_ENCRYPTION()
 	EVP_CIPHER_CTX_free(decrypt); decrypt = nullptr;
 }
 
-int AES_GCM_256_ENCRYPTION::encryptMessage(const unsigned char *plaintext, int plaintext_len, unsigned char *iv, unsigned char *ciphertext)
+int AES_GCM_256_ENCRYPTION::encryptMessage(const unsigned char *plaintext, int plaintext_len, unsigned char *ciphertext)
 {
     int len = 0;
     int ciphertext_len = 0;
 
-    if (EVP_EncryptInit_ex(encrypt, EVP_aes_256_cbc(), nullptr, key, iv) != 1)
+    if (EVP_EncryptInit_ex(encrypt, EVP_aes_256_cbc(), nullptr, key, IV) != 1)
     {
         perror("Error during encryption initialization: ");
         return -1;
@@ -72,12 +72,12 @@ int AES_GCM_256_ENCRYPTION::encryptMessage(const unsigned char *plaintext, int p
     return ciphertext_len;
 }
 
-int AES_GCM_256_ENCRYPTION::decryptMessage(const unsigned char *ciphertext, int ciphertext_len, unsigned char *iv, unsigned char *plaintext)
+int AES_GCM_256_ENCRYPTION::decryptMessage(const unsigned char *ciphertext, int ciphertext_len, unsigned char *plaintext)
 {
     int len = 0;
     int plaintext_len = 0;
 
-    if (EVP_DecryptInit_ex(decrypt, EVP_aes_256_cbc(), nullptr, key, iv) != 1)
+    if (EVP_DecryptInit_ex(decrypt, EVP_aes_256_cbc(), nullptr, key, IV) != 1)
     {
         perror("Error initializing decryption: ");
         return -1;

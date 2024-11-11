@@ -8,25 +8,30 @@
 
 #include "AES_GCM_256_ENCRYPTION.h"
 
-void handleClient(int clientSocket)
+const char* create_key_iv(const char *key, const char* iv)
 {
-    unsigned char buffer[MSG_LEN];
+	char key_iv_string[AES_32_BYTES + EVP_MAX_IV_LENGTH];
+	memset(key_iv_string, 0, AES_32_BYTES + EVP_MAX_IV_LENGTH);
+	memcpy(key_iv_string, key, AES_32_BYTES);
+	memcpy(key_iv_string + AES_32_BYTES, iv, EVP_MAX_IV_LENGTH);
+	return key_iv_string;
+}
 
-    int iv_len = read(clientSocket, buffer, EVP_MAX_IV_LENGTH);
-    if (iv_len != EVP_MAX_IV_LENGTH)
-    {
-        cerr << "Error reading IV from client." << endl;
-        close(clientSocket);
-        return;
-    }
+void handleClient(int clientSocket, const char* KeyIV)
+{
 
-    unsigned char iv[EVP_MAX_IV_LENGTH];
-    memcpy(iv, buffer, EVP_MAX_IV_LENGTH);
+	//send key_iv
+	if(write(clientSocket, KeyIV, AES_32_BYTES + EVP_MAX_IV_LENGTH) < 0)
+	{
+		perror("Write Error!!");
+		return;
+	}
 
-    int ciphertext_len = read(clientSocket, buffer, sizeof(buffer));
+	unsigned char buffer[MSG_LEN];
+	int ciphertext_len = read(clientSocket, buffer, sizeof(buffer));
     if (ciphertext_len <= 0)
     {
-        cerr << "Error reading ciphertext from client." << endl;
+        perror("Error reading ciphertext from client.");
         close(clientSocket);
         return;
     }
@@ -34,21 +39,22 @@ void handleClient(int clientSocket)
     unsigned char decrypted[1024];
     AES_GCM_256_ENCRYPTION &aes = AES_GCM_256_ENCRYPTION::getInstance();
 
-    int decrypted_len = aes.decryptMessage(buffer, ciphertext_len, iv, decrypted);
-    if (decrypted_len == -1)
-    {
-        cerr << "Decryption failed." << endl;
-        close(clientSocket);
-        return;
+    int decrypted_len = aes.decryptMessage(buffer, ciphertext_len, decrypted);
+    if (decrypted_len == -1) {
+    	perror("Decryption failed.");
+        const char *error_response = "Unable to decrypt packet";
+        write(clientSocket, error_response, strlen(error_response));
+    }
+    else {
+		decrypted[decrypted_len] = '\0';
+		cout << "Decrypted message from client: " << decrypted << endl;
+
+		const char *response = "Message received and decrypted!";
+		write(clientSocket, response, strlen(response));
     }
 
-    decrypted[decrypted_len] = '\0';
-    cout << "Decrypted message from client: " << decrypted << endl;
-
-    const char *response = "Message received and decrypted!";
-    write(clientSocket, response, strlen(response));
-
     close(clientSocket);
+    return;
 }
 
 int main(int argc, char **argv)
@@ -79,6 +85,15 @@ int main(int argc, char **argv)
     char iv[EVP_MAX_IV_LENGTH]; memcpy(iv, ivStr, EVP_MAX_IV_LENGTH);
 
     AES_GCM_256_ENCRYPTION::getInstance(key,iv);
+
+    char key_iv[AES_32_BYTES+EVP_MAX_IV_LENGTH];
+    memcpy(key_iv, create_key_iv(key,iv), AES_32_BYTES+EVP_MAX_IV_LENGTH);
+
+    cout << "Key_IV[";
+    for(int i=0; i<AES_32_BYTES+EVP_MAX_IV_LENGTH; i++) {
+    	cout << key_iv[i];
+    }
+    cout << "]" << endl;
 
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1)
@@ -120,7 +135,7 @@ int main(int argc, char **argv)
         }
 
         cout << "Client connected." << endl;
-        handleClient(clientSocket);
+        handleClient(clientSocket, key_iv);
     }
 
     close(serverSocket);

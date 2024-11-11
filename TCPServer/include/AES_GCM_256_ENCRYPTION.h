@@ -33,8 +33,8 @@ public:
         return *obj;
     }
 
-    int encryptMessage(const unsigned char *plaintext, int plaintext_len, unsigned char *iv, unsigned char *ciphertext);
-    int decryptMessage(const unsigned char *ciphertext, int ciphertext_len, unsigned char *iv, unsigned char *plaintext);
+    int encryptMessage(const unsigned char *plaintext, int plaintext_len, unsigned char *ciphertext);
+    int decryptMessage(const unsigned char *ciphertext, int ciphertext_len, unsigned char *plaintext);
 };
 
 #endif /* AES_GCM_256_ENCRYPTION_H_ */
