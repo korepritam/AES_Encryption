@@ -45,6 +45,24 @@ void encryptAndSendMessage(int serverSocket, const char *message)
 
 }
 
+int decryptAndReceiveMessage(unsigned const char* encrypted_server_response, int encrypted_server_response_len)
+{
+    unsigned char decrypted[1024];
+    AES_GCM_256_ENCRYPTION &aes = AES_GCM_256_ENCRYPTION::getInstance();
+
+    int decrypted_len = aes.decryptMessage(encrypted_server_response, encrypted_server_response_len, decrypted);
+    if (decrypted_len == -1) {
+    	perror("Unable to decrypt server packet.");
+    	return EXIT_FAILURE;
+    }
+    else {
+		decrypted[decrypted_len] = '\0';
+		cout << "Decrypted message from client: " << decrypted << endl;
+		return EXIT_SUCCESS;
+    }
+
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 3)
@@ -86,13 +104,11 @@ int main(int argc, char **argv)
     const char *message = "Hello, this is an encrypted message!";
     cout << "Client message: " << message << endl;
     encryptAndSendMessage(serverSocket, message);
-
     unsigned char server_response[MSG_LEN];
-    int response_len = read(serverSocket, server_response, sizeof(server_response));
-    if (response_len > 0)
+    int server_response_len = read(serverSocket, server_response, sizeof(server_response));
+    if (server_response_len > 0)
 	{
-    	server_response[response_len] = '\0';  // Null-terminate the response
-		cout << "Server response: " << server_response << endl;
+    	decryptAndReceiveMessage(server_response, server_response_len);
 	}
 	else
 	{

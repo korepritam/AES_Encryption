@@ -7,6 +7,9 @@
 //============================================================================
 
 #include "AES_GCM_256_ENCRYPTION.h"
+#include <time.h>
+
+timespec LATENCY[16];
 
 const char* create_key_iv(const char *key, const char* iv)
 {
@@ -17,13 +20,28 @@ const char* create_key_iv(const char *key, const char* iv)
 	return key_iv_string;
 }
 
+void encryptAndSendMessage(int clientSocket, const char *message)
+{
+	AES_GCM_256_ENCRYPTION &aes = AES_GCM_256_ENCRYPTION::getInstance();
+    unsigned char ciphertext[MSG_LEN];
+    int ciphertext_len = aes.encryptMessage(reinterpret_cast<const unsigned char *>(message), strlen(message), ciphertext);
+
+    if (ciphertext_len == -1)
+    {
+        cerr << "Encryption failed." << endl;
+        return;
+    }
+
+    write(clientSocket, ciphertext, ciphertext_len);  //Send the ciphertext
+}
+
+
 void handleClient(int clientSocket, const char* KeyIV)
 {
-
 	//send key_iv
 	if(write(clientSocket, KeyIV, AES_32_BYTES + EVP_MAX_IV_LENGTH) < 0)
 	{
-		perror("Write Error!!");
+		perror("Write Error, Unable to send Key,IV!!");
 		return;
 	}
 
@@ -41,16 +59,13 @@ void handleClient(int clientSocket, const char* KeyIV)
 
     int decrypted_len = aes.decryptMessage(buffer, ciphertext_len, decrypted);
     if (decrypted_len == -1) {
-    	perror("Decryption failed.");
-        const char *error_response = "Unable to decrypt packet";
-        write(clientSocket, error_response, strlen(error_response));
+    	perror("Unable to decrypt packet.");
     }
     else {
 		decrypted[decrypted_len] = '\0';
 		cout << "Decrypted message from client: " << decrypted << endl;
-
 		const char *response = "Message received and decrypted!";
-		write(clientSocket, response, strlen(response));
+		encryptAndSendMessage(clientSocket,response);
     }
 
     close(clientSocket);
