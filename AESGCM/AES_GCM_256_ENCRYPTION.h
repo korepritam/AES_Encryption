@@ -19,6 +19,9 @@ class AES_GCM_256_ENCRYPTION
     EVP_CIPHER_CTX *encrypt;
     EVP_CIPHER_CTX *decrypt;
 
+    timespec LATENCY_PROFILE_ENCRYPT[4];
+
+
     static AES_GCM_256_ENCRYPTION *obj;
     AES_GCM_256_ENCRYPTION(const char*, const char*);
     ~AES_GCM_256_ENCRYPTION();

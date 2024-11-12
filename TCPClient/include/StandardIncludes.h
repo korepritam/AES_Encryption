@@ -14,9 +14,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <string.h>
+#include <time.h>
 
 using namespace std;
 
 #define MSG_LEN 1024
+#define NANO_MULTIPLIER 1000000000
 
 #endif /* STANDARDINCLUDES_H_ */
